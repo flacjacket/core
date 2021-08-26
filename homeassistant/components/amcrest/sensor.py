@@ -93,6 +93,9 @@ class AmcrestSensor(SensorEntity):
             return
         _LOGGER.debug("Updating %s sensor", self.name)
 
+        if self._attr_device_info is None:
+            self._attr_device_info = await self._api.async_device_info
+
         sensor_type = self.entity_description.key
 
         try:

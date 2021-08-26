@@ -38,6 +38,7 @@ from homeassistant.exceptions import Unauthorized, UnknownUser
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.helpers.typing import ConfigType
@@ -148,6 +149,7 @@ class AmcrestChecker(ApiWrapper):
         self._wrap_login_err = False
         self._wrap_event_flag = asyncio.Event()
         self._wrap_event_flag.set()
+        self._device_info: DeviceInfo | None = None
         self._unsub_recheck: Callable[[], None] | None = None
         super().__init__(
             host,
@@ -157,6 +159,20 @@ class AmcrestChecker(ApiWrapper):
             retries_connection=COMM_RETRIES,
             timeout_protocol=COMM_TIMEOUT,
         )
+
+    @property
+    async def async_device_info(self) -> DeviceInfo | None:
+        """Return cached device info."""
+        if self._device_info is None:
+            with suppress(AmcrestError):
+                self._device_info = DeviceInfo(
+                    name=await self.async_machine_name,
+                    manufacturer=await self.async_vendor_information,
+                    model=await self.async_device_type,
+                    sw_version=" ".join(await self.async_software_information),
+                )
+
+        return self._device_info
 
     @property
     def available(self) -> bool:
