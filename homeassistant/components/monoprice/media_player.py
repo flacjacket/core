@@ -1,6 +1,11 @@
 """Support for interfacing with Monoprice 6 zone home audio controller."""
-import logging
+from __future__ import annotations
 
+import logging
+from types import MappingProxyType
+from typing import Any
+
+from pymonoprice import Monoprice, ZoneStatus
 from serial import SerialException
 
 from homeassistant import core
@@ -32,8 +37,11 @@ MAX_VOLUME = 38
 PARALLEL_UPDATES = 1
 
 
+SourcesType = tuple[dict[int, str], dict[str, int], list[str]]
+
+
 @core.callback
-def _get_sources_from_dict(data):
+def _get_sources_from_dict(data: MappingProxyType[str, Any]) -> SourcesType:
     sources_config = data[CONF_SOURCES]
 
     source_id_name = {int(index): name for index, name in sources_config.items()}
@@ -42,11 +50,11 @@ def _get_sources_from_dict(data):
 
     source_names = sorted(source_name_id.keys(), key=lambda v: source_name_id[v])
 
-    return [source_id_name, source_name_id, source_names]
+    return source_id_name, source_name_id, source_names
 
 
 @core.callback
-def _get_sources(config_entry):
+def _get_sources(config_entry: ConfigEntry) -> SourcesType:
     if CONF_SOURCES in config_entry.options:
         data = config_entry.options
     else:
@@ -81,7 +89,9 @@ async def async_setup_entry(
 
     platform = entity_platform.async_get_current_platform()
 
-    def _call_service(entities, service_call):
+    def _call_service(
+        entities: list[MonopriceZone], service_call: core.ServiceCall
+    ) -> None:
         for entity in entities:
             if service_call.service == SERVICE_SNAPSHOT:
                 entity.snapshot()
@@ -126,7 +136,9 @@ class MonopriceZone(MediaPlayerEntity):
         | MediaPlayerEntityFeature.SELECT_SOURCE
     )
 
-    def __init__(self, monoprice, sources, namespace, zone_id):
+    def __init__(
+        self, monoprice: Monoprice, sources: SourcesType, namespace: str, zone_id: int
+    ) -> None:
         """Initialize new zone."""
         self._monoprice = monoprice
         # dict source_id -> source name
@@ -145,7 +157,7 @@ class MonopriceZone(MediaPlayerEntity):
             name=self.name,
         )
 
-        self._snapshot = None
+        self._snapshot: ZoneStatus | None = None
         self._update_success = True
 
     def update(self) -> None:
@@ -176,15 +188,15 @@ class MonopriceZone(MediaPlayerEntity):
         return self._zone_id < 20 or self._update_success
 
     @property
-    def media_title(self):
+    def media_title(self) -> str | None:
         """Return the current source as medial title."""
         return self.source
 
-    def snapshot(self):
+    def snapshot(self) -> None:
         """Save zone's current state."""
         self._snapshot = self._monoprice.zone_status(self._zone_id)
 
-    def restore(self):
+    def restore(self) -> None:
         """Restore saved state."""
         if self._snapshot:
             self._monoprice.restore_zone(self._snapshot)

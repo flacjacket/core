@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from pymonoprice import get_monoprice
 from serial import SerialException
@@ -9,6 +10,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.const import CONF_PORT
+from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CONF_SOURCE_1,
@@ -38,7 +40,7 @@ DATA_SCHEMA = vol.Schema({vol.Required(CONF_PORT): str, **OPTIONS_FOR_DATA})
 
 
 @core.callback
-def _sources_from_config(data):
+def _sources_from_config(data: dict[str, Any]) -> dict[str, str]:
     sources_config = {
         str(idx + 1): data.get(source) for idx, source in enumerate(SOURCES)
     }
@@ -50,7 +52,9 @@ def _sources_from_config(data):
     }
 
 
-async def validate_input(hass: core.HomeAssistant, data):
+async def validate_input(
+    hass: core.HomeAssistant, data: dict[str, Any]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
@@ -72,7 +76,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
@@ -100,7 +106,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 @core.callback
-def _key_for_source(index, source, previous_sources):
+def _key_for_source(
+    index: int, source: str, previous_sources: dict[str, str]
+) -> vol.Optional:
     if str(index) in previous_sources:
         key = vol.Optional(
             source, description={"suggested_value": previous_sources[str(index)]}
@@ -119,15 +127,17 @@ class MonopriceOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     @core.callback
-    def _previous_sources(self):
+    def _previous_sources(self) -> dict[str, str]:
         if CONF_SOURCES in self.config_entry.options:
-            previous = self.config_entry.options[CONF_SOURCES]
+            previous: dict[str, str] = self.config_entry.options[CONF_SOURCES]
         else:
             previous = self.config_entry.data[CONF_SOURCES]
 
         return previous
 
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(

@@ -182,6 +182,7 @@ homeassistant.components.metoffice.*
 homeassistant.components.mikrotik.*
 homeassistant.components.mjpeg.*
 homeassistant.components.modbus.*
+homeassistant.components.monoprice.*
 homeassistant.components.modem_callerid.*
 homeassistant.components.moon.*
 homeassistant.components.mysensors.*
